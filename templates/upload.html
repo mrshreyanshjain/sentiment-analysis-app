@@ -1,0 +1,217 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CSV Sentiment Analyzer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: linear-gradient(120deg, #667eea, #764ba2);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      color: white;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+    .container {
+      background-color: rgba(255,255,255,0.1);
+      padding: 30px;
+      border-radius: 15px;
+      width: 100%;
+      max-width: 500px;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+    .title {
+      margin-bottom: 30px;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    .upload-section {
+      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+    }
+    input[type="file"] {
+      width: 100%;
+      margin-bottom: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      background: white;
+      color: #333;
+      font-size: 14px;
+    }
+    button {
+      background-color: white;
+      color: #764ba2;
+      padding: 12px 25px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      font-weight: bold;
+      font-size: 16px;
+      transition: all 0.3s ease;
+      width: 100%;
+    }
+    button:hover {
+      background-color: #f0f0f0;
+      transform: translateY(-2px);
+    }
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .result {
+      margin-top: 20px;
+      background: rgba(0,0,0,0.3);
+      padding: 15px;
+      border-radius: 10px;
+      text-align: left;
+    }
+    .success {
+      color: #4ade80;
+    }
+    .error {
+      color: #f87171;
+    }
+    .info-text {
+      font-size: 14px;
+      margin-bottom: 15px;
+      opacity: 0.9;
+    }
+    .loading {
+      display: none;
+      margin: 10px 0;
+    }
+    .spinner {
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top: 2px solid white;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: inline-block;
+      margin-right: 10px;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="title">📊 CSV Sentiment Analyzer</div>
+
+    <div class="upload-section">
+      <div class="info-text">
+        Upload a CSV file containing reviews for sentiment analysis.<br>
+        The CSV should have a column named 'review' (or similar: comment, text, feedback, opinion).
+      </div>
+
+      <input type="file" id="file" accept=".csv">
+      <button id="uploadBtn" onclick="uploadCSV()">Analyze CSV File</button>
+
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        Processing your CSV file...
+      </div>
+    </div>
+
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    function showLoading(show) {
+      document.getElementById('loading').style.display = show ? 'block' : 'none';
+      document.getElementById('uploadBtn').disabled = show;
+      document.getElementById('uploadBtn').textContent = show ? 'Processing...' : 'Analyze CSV File';
+    }
+
+    async function uploadCSV() {
+      const fileInput = document.getElementById('file');
+      const file = fileInput.files[0];
+
+      if (!file) {
+        alert("Please choose a CSV file.");
+        return;
+      }
+
+      if (!file.name.toLowerCase().endsWith('.csv')) {
+        alert("Please select a CSV file.");
+        return;
+      }
+
+      showLoading(true);
+      document.getElementById('result').style.display = 'none';
+
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+
+        const res = await fetch("/upload", {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          document.getElementById("result").innerHTML = `
+            <div class="success">
+              <h3>✅ Analysis Complete!</h3>
+              <p><strong>Total Reviews:</strong> ${data.total_reviews}</p>
+              <p><strong>Processed Reviews:</strong> ${data.processed_reviews}</p>
+              ${data.skipped_reviews > 0 ? `<p><strong>Skipped Reviews:</strong> ${data.skipped_reviews} (empty or invalid)</p>` : ''}
+              <p><strong>Sentiment Distribution:</strong></p>
+              <ul style="text-align: left; margin: 10px 0;">
+                ${Object.entries(data.sentiment_distribution).map(([sentiment, count]) =>
+                  `<li>${sentiment}: ${count} (${((count/data.processed_reviews)*100).toFixed(1)}%)</li>`
+                ).join('')}
+              </ul>
+              <p><strong>Average Confidence:</strong> ${(data.average_confidence * 100).toFixed(2)}%</p>
+              <div style="margin-top: 15px;">
+                <a href="/download"><button style="width: auto; display: inline-block;">📥 Download Results</button></a>
+              </div>
+            </div>
+          `;
+        } else {
+          document.getElementById("result").innerHTML = `
+            <div class="error">
+              <h3>❌ Error</h3>
+              <p>${data.error}</p>
+            </div>
+          `;
+        }
+
+        document.getElementById('result').style.display = 'block';
+
+      } catch (error) {
+        document.getElementById("result").innerHTML = `
+          <div class="error">
+            <h3>❌ Network Error</h3>
+            <p>Failed to upload file. Please check your connection and try again.</p>
+          </div>
+        `;
+        document.getElementById('result').style.display = 'block';
+      } finally {
+        showLoading(false);
+      }
+    }
+
+    // Reset result when new file is selected
+    document.getElementById('file').addEventListener('change', function() {
+      document.getElementById('result').style.display = 'none';
+    });
+  </script>
+</body>
+</html>
