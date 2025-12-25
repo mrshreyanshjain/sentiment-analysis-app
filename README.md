@@ -25,7 +25,7 @@ sentiment-analysis-app/
 ├── vectorizer.pkl          		✅ Trained TF-IDF vectorizer
 ├── product_reviews_balanced_1MF.csv   ✅ Optional test input file
 ├── requirements.txt        		✅ All dependencies
-└── README.txt              		✅ Project overview
+└── README.md              		✅ Project overview
 
 
 ⚙️ Setup Instructions
@@ -58,6 +58,3 @@ sentiment-analysis-app/
 ✅ Output:
 Sentiment: Excellent
 
-🧑‍💻 Author
-Shreyansh Jain
-Mentor: Anand Maurya
